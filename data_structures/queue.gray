@@ -1,0 +1,122 @@
+// Queue (circular buffer)
+// A queue is FIFO: enqueue at the back, dequeue from the front.
+// This version uses a fixed array that grows when full, with head/tail indices
+// wrapping around so we don't have to shift elements.
+
+import @arrays
+
+const Queue struct {
+    data [i64]
+    head i64
+    tail i64
+    count i64
+}
+
+do queue_new() -> Queue {
+    mut data [i64] = {}
+    for i in range(0, 4) {
+        arrays.append(data, 0)
+    }
+    return Queue{data: data, head: 0, tail: 0, count: 0}
+}
+
+do queue_grow(&self Queue) {
+    mut old_len i64 = len(self.data)
+    mut new_len i64 = old_len * 2
+
+    mut new_data [i64] = {}
+    mut i i64 = 0
+    for i < new_len {
+        arrays.append(new_data, 0)
+        i += 1
+    }
+
+    // copy elements in logical order into the new buffer
+    mut j i64 = 0
+    for j < self.count {
+        mut idx i64 = (self.head + j) % old_len
+        new_data[j] = self.data[idx]
+        j += 1
+    }
+
+    self.data = new_data
+    self.head = 0
+    self.tail = self.count
+}
+
+do queue_enqueue(&self Queue, value i64) {
+    mut cap i64 = len(self.data)
+    if self.count == cap {
+        queue_grow(self)
+        cap = len(self.data)
+    }
+
+    self.data[self.tail] = value
+    self.tail = (self.tail + 1) % cap
+    self.count += 1
+}
+
+do queue_dequeue(&self Queue) -> (i64, bool) {
+    if self.count == 0 {
+        return 0, false
+    }
+
+    mut value i64 = self.data[self.head]
+    mut cap i64 = len(self.data)
+    self.head = (self.head + 1) % cap
+    self.count -= 1
+    return value, true
+}
+
+do queue_peek_front(self Queue) -> (i64, bool) {
+    if self.count == 0 { return 0, false }
+    return self.data[self.head], true
+}
+
+do queue_peek_back(self Queue) -> (i64, bool) {
+    if self.count == 0 { return 0, false }
+    mut cap i64 = len(self.data)
+    mut idx i64 = (self.tail + cap - 1) % cap
+    return self.data[idx], true
+}
+
+do queue_len(self Queue) -> i64 { return self.count }
+do queue_is_empty(self Queue) -> bool { return self.count == 0 }
+
+do queue_drain(&self Queue) {
+    self.head = 0
+    self.tail = 0
+    self.count = 0
+}
+
+#test
+do test_queue_functionality() {
+    mut q = queue_new()
+    assert(queue_is_empty(q), "empty")
+
+    queue_enqueue(q, 8)
+    queue_enqueue(q, 16)
+    assert(!queue_is_empty(q), "not empty")
+    assert(queue_len(q) == 2, "len 2")
+
+    mut v1, ok1 = queue_peek_front(q)
+    assert(ok1 && v1 == 8, "front 8")
+    mut v2, ok2 = queue_peek_back(q)
+    assert(ok2 && v2 == 16, "back 16")
+
+    mut v3, ok3 = queue_dequeue(q)
+    assert(ok3 && v3 == 8, "deq 8")
+    assert(queue_len(q) == 1, "len 1")
+
+    mut v4, ok4 = queue_peek_front(q)
+    assert(ok4 && v4 == 16, "front 16")
+    mut v5, ok5 = queue_peek_back(q)
+    assert(ok5 && v5 == 16, "back 16")
+
+    queue_drain(q)
+    assert(queue_is_empty(q), "drained")
+    assert(queue_len(q) == 0, "len 0")
+
+    mut _, ok6 = queue_dequeue(q)
+    assert(!ok6, "deq empty")
+}

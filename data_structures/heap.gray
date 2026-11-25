@@ -1,0 +1,197 @@
+// Binary Heap
+// A heap stores values in an array so the "best" element (min or max) stays at
+// index 0. After add/pop we bubble elements up or down to restore the heap rule.
+
+import @arrays
+
+const Heap struct {
+    items [i64]
+    is_min bool
+}
+
+do heap_new_min() -> Heap { return Heap{items: {}, is_min: true} }
+do heap_new_max() -> Heap { return Heap{items: {}, is_min: false} }
+
+do heap_cmp(self Heap, a i64, b i64) -> bool {
+    if self.is_min { return a < b }
+    return a > b
+}
+
+do heap_len(self Heap) -> i64 { return len(self.items) }
+do heap_is_empty(self Heap) -> bool { return len(self.items) == 0 }
+
+do heap_swap(&self Heap, i i64, j i64) {
+    mut tmp i64 = self.items[i]
+    self.items[i] = self.items[j]
+    self.items[j] = tmp
+}
+
+do heap_heapify_up(&self Heap, idx i64) {
+    mut i i64 = idx
+    for i > 0 {
+        mut p i64 = (i - 1) / 2
+        if heap_cmp(self, self.items[i], self.items[p]) {
+            heap_swap(self, i, p)
+            i = p
+        } otherwise {
+            break
+        }
+    }
+}
+
+do heap_heapify_down(&self Heap, idx i64) {
+    mut i i64 = idx
+    mut n i64 = len(self.items)
+
+    for true {
+        mut left i64 = i * 2 + 1
+        if left >= n { break }
+
+        mut child i64 = left
+        mut right i64 = left + 1
+        if right < n && heap_cmp(self, self.items[right], self.items[left]) {
+            child = right
+        }
+
+        if heap_cmp(self, self.items[child], self.items[i]) {
+            heap_swap(self, i, child)
+            i = child
+        } otherwise {
+            break
+        }
+    }
+}
+
+do heap_add(&self Heap, value i64) {
+    arrays.append(self.items, value)
+    heap_heapify_up(self, len(self.items) - 1)
+}
+
+do heap_pop(&self Heap) -> (i64, bool) {
+    mut n i64 = len(self.items)
+    if n == 0 { return 0, false }
+
+    mut root i64 = self.items[0]
+    mut last i64 = self.items[n - 1]
+
+    // rebuild array without last element (Gray arrays don't have pop)
+    mut new_items [i64] = {}
+    mut i i64 = 0
+    for i < n - 1 {
+        arrays.append(new_items, self.items[i])
+        i += 1
+    }
+    self.items = new_items
+
+    if len(self.items) > 0 {
+        self.items[0] = last
+        heap_heapify_down(self, 0)
+    }
+
+    return root, true
+}
+
+do heap_from_vec_min(arr [i64]) -> Heap {
+    mut h = heap_new_min()
+    for_each v in arr { heap_add(h, v) }
+    return h
+}
+
+do heap_from_vec_max(arr [i64]) -> Heap {
+    mut h = heap_new_max()
+    for_each v in arr { heap_add(h, v) }
+    return h
+}
+
+#test
+do test_empty_heap() {
+    mut h = heap_new_max()
+    mut _, ok = heap_pop(h)
+    assert(!ok, "empty")
+}
+
+#test
+do test_min_heap() {
+    mut h = heap_new_min()
+    heap_add(h, 4)
+    heap_add(h, 2)
+    heap_add(h, 9)
+    heap_add(h, 11)
+    assert(heap_len(h) == 4, "len 4")
+
+    mut v1, ok1 = heap_pop(h)
+    assert(ok1 && v1 == 2, "2")
+    mut v2, ok2 = heap_pop(h)
+    assert(ok2 && v2 == 4, "4")
+    mut v3, ok3 = heap_pop(h)
+    assert(ok3 && v3 == 9, "9")
+
+    heap_add(h, 1)
+    mut v4, ok4 = heap_pop(h)
+    assert(ok4 && v4 == 1, "1")
+    mut v5, ok5 = heap_pop(h)
+    assert(ok5 && v5 == 11, "11")
+    mut _, ok6 = heap_pop(h)
+    assert(!ok6, "none")
+}
+
+#test
+do test_max_heap() {
+    mut h = heap_new_max()
+    heap_add(h, 4)
+    heap_add(h, 2)
+    heap_add(h, 9)
+    heap_add(h, 11)
+    assert(heap_len(h) == 4, "len 4")
+
+    mut v1, ok1 = heap_pop(h)
+    assert(ok1 && v1 == 11, "11")
+    mut v2, ok2 = heap_pop(h)
+    assert(ok2 && v2 == 9, "9")
+    mut v3, ok3 = heap_pop(h)
+    assert(ok3 && v3 == 4, "4")
+
+    heap_add(h, 1)
+    mut v4, ok4 = heap_pop(h)
+    assert(ok4 && v4 == 2, "2")
+    mut v5, ok5 = heap_pop(h)
+    assert(ok5 && v5 == 1, "1")
+    mut _, ok6 = heap_pop(h)
+    assert(!ok6, "none")
+}
+
+#test
+do test_from_vec_min() {
+    mut arr [i64] = {3, 1, 4, 1, 5, 9, 2, 6, 5}
+    mut h = heap_from_vec_min(arr)
+    assert(heap_len(h) == 9, "len 9")
+
+    mut v1, ok1 = heap_pop(h)
+    assert(ok1 && v1 == 1, "1")
+    mut v2, ok2 = heap_pop(h)
+    assert(ok2 && v2 == 1, "1")
+    mut v3, ok3 = heap_pop(h)
+    assert(ok3 && v3 == 2, "2")
+
+    heap_add(h, 0)
+    mut v4, ok4 = heap_pop(h)
+    assert(ok4 && v4 == 0, "0")
+}
+
+#test
+do test_from_vec_max() {
+    mut arr [i64] = {3, 1, 4, 1, 5, 9, 2, 6, 5}
+    mut h = heap_from_vec_max(arr)
+    assert(heap_len(h) == 9, "len 9")
+
+    mut v1, ok1 = heap_pop(h)
+    assert(ok1 && v1 == 9, "9")
+    mut v2, ok2 = heap_pop(h)
+    assert(ok2 && v2 == 6, "6")
+    mut v3, ok3 = heap_pop(h)
+    assert(ok3 && v3 == 5, "5")
+
+    heap_add(h, 10)
+    mut v4, ok4 = heap_pop(h)
+    assert(ok4 && v4 == 10, "10")
+}

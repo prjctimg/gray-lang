@@ -1,0 +1,80 @@
+// Navigation functions, ported from TheAlgorithms (Rust implementation)
+// Author: prjctimg <0xprjctimg@gmail.com>
+import @math
+using math
+
+const EARTH_RADIUS f64 = 6371000.0
+
+// Initial bearing (forward azimuth) from point 1 to point 2, in degrees [0, 360).
+do bearing(lat1 f64, lng1 f64, lat2 f64, lng2 f64) -> f64 {
+    mut lat1r f64 = lat1 * PI / 180.0
+    mut lng1r f64 = lng1 * PI / 180.0
+    mut lat2r f64 = lat2 * PI / 180.0
+    mut lng2r f64 = lng2 * PI / 180.0
+
+    mut delta_lng f64 = lng2r - lng1r
+    mut y f64 = sin(delta_lng) * cos(lat2r)
+    mut x f64 = cos(lat1r) * sin(lat2r) - sin(lat1r) * cos(lat2r) * cos(delta_lng)
+
+    mut brng f64 = rad_to_deg(atan2(y, x))
+    return mod(brng + 360.0, 360.0)
+}
+
+// Rhumb line (loxodrome) distance between two points, in meters.
+do rhumb_dist(lat1 f64, lng1 f64, lat2 f64, lng2 f64) -> f64 {
+    mut phi1 f64 = lat1 * PI / 180.0
+    mut phi2 f64 = lat2 * PI / 180.0
+    mut delta_phi f64 = phi2 - phi1
+    mut delta_lambda f64 = (lng2 - lng1) * PI / 180.0
+
+    mut delta_psi f64 = log(tan(PI / 4.0 + phi2 / 2.0) / tan(PI / 4.0 + phi1 / 2.0))
+
+    mut q f64 = delta_phi / delta_psi
+    if abs(delta_psi) < 0.0000000001 {
+        q = cos(phi1)
+    }
+
+    mut d_lambda f64 = delta_lambda
+    if abs(d_lambda) > PI {
+        if d_lambda > 0.0 {
+            d_lambda = d_lambda - 2.0 * PI
+        } otherwise {
+            d_lambda = d_lambda + 2.0 * PI
+        }
+    }
+
+    return sqrt(delta_phi * delta_phi + q * q * d_lambda * d_lambda) * EARTH_RADIUS
+}
+
+// Great-circle distance between two points using the haversine formula, in meters.
+do haversine(lat1 f64, lng1 f64, lat2 f64, lng2 f64) -> f64 {
+    mut d_lat f64 = (lat2 - lat1) * PI / 180.0
+    mut d_lng f64 = (lng2 - lng1) * PI / 180.0
+
+    mut lat1r f64 = lat1 * PI / 180.0
+    mut lat2r f64 = lat2 * PI / 180.0
+
+    mut a f64 = sin(d_lat / 2.0) * sin(d_lat / 2.0)
+    a = a + cos(lat1r) * cos(lat2r) * sin(d_lng / 2.0) * sin(d_lng / 2.0)
+
+    mut c f64 = 2.0 * atan2(sqrt(a), sqrt(1.0 - a))
+    return EARTH_RADIUS * c
+}
+
+#test
+do test_haversine() {
+    mut f1 f64 = haversine(52.375603, 4.903206, 52.366059, 4.926692) / 1000.0
+    assert(f1 > 1.91 && f1 < 1.93, "haversine:${f1}")
+}
+
+#test
+do test_bearing() {
+    mut b f64 = bearing(52.375603, 4.903206, 52.366059, 4.926692)
+    assert(b > 0.0 && b < 360.0, "bearing:${b}")
+}
+
+#test
+do test_rhumb_dist() {
+    mut d f64 = rhumb_dist(52.375603, 4.903206, 52.366059, 4.926692) / 1000.0
+    assert(d > 1.9 && d < 2.0, "rhumb:${d}")
+}

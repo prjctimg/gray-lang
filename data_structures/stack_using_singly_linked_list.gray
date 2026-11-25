@@ -1,0 +1,98 @@
+// Stack (singly linked list)
+// A stack is LIFO: you push onto the top and pop from the top.
+// We keep a head pointer to the first node; push/pop just move that pointer.
+
+const StackNode struct {
+    value i64
+    next ^StackNode
+}
+
+const Stack struct {
+    head ^StackNode
+    size i64
+}
+
+do stack_new() -> Stack {
+    return Stack{head: nil, size: 0}
+}
+
+do stack_push(&self Stack, value i64) {
+    mut node ^StackNode = new(StackNode)
+    node^.value = value
+    node^.next = self.head
+    self.head = node
+    self.size += 1
+}
+
+do stack_pop(&self Stack) -> (i64, bool) {
+    if self.head == nil {
+        return 0, false
+    }
+
+    mut node ^StackNode = self.head
+    mut value i64 = node^.value
+    self.head = node^.next
+    self.size -= 1
+    return value, true
+}
+
+do stack_peek(self Stack) -> (i64, bool) {
+    if self.head == nil {
+        return 0, false
+    }
+    return self.head^.value, true
+}
+
+do stack_is_empty(self Stack) -> bool {
+    return self.head == nil
+}
+
+do stack_len(self Stack) -> i64 {
+    return self.size
+}
+
+#test
+do test_stack_basics() {
+    mut s = stack_new()
+    mut _, ok1 = stack_pop(s)
+    assert(!ok1, "pop empty")
+
+    stack_push(s, 1)
+    stack_push(s, 2)
+    stack_push(s, 3)
+
+    mut v2, ok2 = stack_pop(s)
+    assert(ok2 && v2 == 3, "pop 3")
+    mut v3, ok3 = stack_pop(s)
+    assert(ok3 && v3 == 2, "pop 2")
+
+    stack_push(s, 4)
+    stack_push(s, 5)
+    assert(!stack_is_empty(s), "not empty")
+
+    mut v4, ok4 = stack_pop(s)
+    assert(ok4 && v4 == 5, "pop 5")
+    mut v5, ok5 = stack_pop(s)
+    assert(ok5 && v5 == 4, "pop 4")
+    mut v6, ok6 = stack_pop(s)
+    assert(ok6 && v6 == 1, "pop 1")
+
+    mut _, ok7 = stack_pop(s)
+    assert(!ok7, "pop empty again")
+    assert(stack_is_empty(s), "empty")
+}
+
+#test
+do test_stack_peek() {
+    mut s = stack_new()
+    mut _, ok1 = stack_peek(s)
+    assert(!ok1, "peek empty")
+
+    stack_push(s, 1)
+    stack_push(s, 2)
+    stack_push(s, 3)
+
+    mut v2, ok2 = stack_peek(s)
+    assert(ok2 && v2 == 3, "peek 3")
+    assert(stack_len(s) == 3, "len")
+}
